@@ -1,22 +1,18 @@
-import pg8000
+import psycopg
 import json
 from datetime import datetime
 import os
 
 class DiagramDBManager:
     def __init__(self):
-        self.connection_string = {
-            "user": "nlallier",
-            "password": os.environ.get("POSTGRES_PASSWORD", "Moine101"),
-            "host": "pg-frdypgdb-prd-cac.postgres.database.azure.com",
-            "port": 5432,
-            "database": "Architecture"
-        }
+        # Build connection string in the format recommended by Microsoft
+        password = os.environ.get("POSTGRES_PASSWORD", "Moine101")
+        self.connection_string = f"host=pg-frdypgdb-prd-cac.postgres.database.azure.com port=5432 dbname=Architecture user=nlallier password={password} sslmode=require"
     
     def _get_connection(self):
         """Get a database connection"""
         try:
-            conn = pg8000.connect(**self.connection_string)
+            conn = psycopg.connect(**self.connection_string)
             print(f"Database connection established successfully")
             return conn
         except Exception as e:

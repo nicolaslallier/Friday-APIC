@@ -38,7 +38,11 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             "status": "unknown",
             "connection": False,
             "table_readable": False,
-            "error": None
+            "error": None,
+            "connection_details": {},
+            "database_info": {},
+            "tables_info": {},
+            "detailed_errors": []
         }
         
         try:
@@ -52,8 +56,67 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             db_check["status"] = "connected"
             print("✅ [HEALTH CHECK] Database connection successful")
             
-            # Test table readability
+            # Get connection details
+            db_check["connection_details"] = {
+                "host": db_manager.connection_string["host"],
+                "port": db_manager.connection_string["port"],
+                "database": db_manager.connection_string["database"],
+                "user": db_manager.connection_string["user"],
+                "connected_at": datetime.utcnow().isoformat() + "Z"
+            }
+            
             cursor = conn.cursor()
+            
+            # Get database information
+            print("📊 [HEALTH CHECK] Getting database information...")
+            cursor.execute("SELECT current_database(), version()")
+            db_info = cursor.fetchone()
+            db_check["database_info"] = {
+                "current_database": db_info[0] if db_info else "unknown",
+                "version": db_info[1] if db_info else "unknown"
+            }
+            
+            # List all databases
+            cursor.execute("SELECT datname FROM pg_database WHERE datistemplate = false")
+            databases = cursor.fetchall()
+            db_check["database_info"]["available_databases"] = [db[0] for db in databases]
+            
+            # List all schemas in current database
+            cursor.execute("SELECT schema_name FROM information_schema.schemata")
+            schemas = cursor.fetchall()
+            db_check["database_info"]["schemas"] = [schema[0] for schema in schemas]
+            
+            # List all tables in public schema
+            cursor.execute("""
+                SELECT table_name, table_type 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                ORDER BY table_name
+            """)
+            tables = cursor.fetchall()
+            db_check["tables_info"]["public_schema_tables"] = [
+                {"name": table[0], "type": table[1]} for table in tables
+            ]
+            
+            # Get detailed information about t_diagram table
+            print("📋 [HEALTH CHECK] Getting t_diagram table details...")
+            cursor.execute("""
+                SELECT column_name, data_type, is_nullable, column_default
+                FROM information_schema.columns 
+                WHERE table_schema = 'public' AND table_name = 't_diagram'
+                ORDER BY ordinal_position
+            """)
+            columns = cursor.fetchall()
+            db_check["tables_info"]["t_diagram_structure"] = [
+                {
+                    "column_name": col[0],
+                    "data_type": col[1],
+                    "is_nullable": col[2],
+                    "default_value": col[3]
+                } for col in columns
+            ]
+            
+            # Test table readability
             cursor.execute("SELECT COUNT(*) FROM public.t_diagram")
             result = cursor.fetchone()
             db_check["table_readable"] = True
@@ -69,13 +132,61 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                     "name": sample_result[1]
                 }
             
+            # Get table size information
+            cursor.execute("""
+                SELECT 
+                    pg_size_pretty(pg_total_relation_size('public.t_diagram')) as total_size,
+                    pg_size_pretty(pg_relation_size('public.t_diagram')) as table_size,
+                    pg_size_pretty(pg_total_relation_size('public.t_diagram') - pg_relation_size('public.t_diagram')) as index_size
+            """)
+            size_info = cursor.fetchone()
+            if size_info:
+                db_check["tables_info"]["t_diagram_size"] = {
+                    "total_size": size_info[0],
+                    "table_size": size_info[1],
+                    "index_size": size_info[2]
+                }
+            
             conn.close()
             print("✅ [HEALTH CHECK] Database check completed successfully")
             
-        except Exception as db_error:
-            print(f"❌ [HEALTH CHECK] Database check failed: {str(db_error)}")
+        except ImportError as import_error:
+            error_msg = f"Failed to import database utilities: {str(import_error)}"
+            print(f"❌ [HEALTH CHECK] {error_msg}")
             db_check["status"] = "error"
-            db_check["error"] = str(db_error)
+            db_check["error"] = error_msg
+            db_check["detailed_errors"].append({
+                "type": "ImportError",
+                "message": str(import_error),
+                "timestamp": datetime.utcnow().isoformat() + "Z"
+            })
+            
+        except Exception as db_error:
+            error_msg = f"Database check failed: {str(db_error)}"
+            print(f"❌ [HEALTH CHECK] {error_msg}")
+            db_check["status"] = "error"
+            db_check["error"] = error_msg
+            db_check["detailed_errors"].append({
+                "type": type(db_error).__name__,
+                "message": str(db_error),
+                "timestamp": datetime.utcnow().isoformat() + "Z",
+                "connection_details": {
+                    "host": "pg-frdypgdb-prd-cac.postgres.database.azure.com",
+                    "port": 5432,
+                    "database": "Architecture",
+                    "user": "nlallier"
+                }
+            })
+            
+            # Try to get more specific error information
+            if "password" in str(db_error).lower():
+                db_check["detailed_errors"][-1]["suggestion"] = "Check POSTGRES_PASSWORD environment variable"
+            elif "connection" in str(db_error).lower():
+                db_check["detailed_errors"][-1]["suggestion"] = "Check network connectivity and firewall rules"
+            elif "database" in str(db_error).lower():
+                db_check["detailed_errors"][-1]["suggestion"] = "Check if database 'Architecture' exists"
+            elif "table" in str(db_error).lower():
+                db_check["detailed_errors"][-1]["suggestion"] = "Check if table 'public.t_diagram' exists"
         
         # Check if health.txt exists in /func1 mount path
         health_file_path = "/func1/health.txt"
