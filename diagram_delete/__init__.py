@@ -14,7 +14,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     Delete a diagram from the PostgreSQL database.
     
     Query parameters:
-    - id: Diagram ID to delete (required)
+    - diagram_id: Diagram ID to delete (required)
     """
     print("🚀 [DIAGRAM DELETE] Function started")
     logging.info('Diagram delete function processed a request.')
@@ -33,15 +33,31 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     
     try:
         # Get diagram ID from query parameters
-        diagram_id = req.params.get('id')
+        diagram_id = req.params.get('diagram_id')
         print(f"🆔 [DIAGRAM DELETE] Diagram ID: {diagram_id}")
         
         if not diagram_id:
             print("❌ [DIAGRAM DELETE] No diagram ID provided")
             return func.HttpResponse(
                 json.dumps({
-                    "error": "Diagram ID is required as a query parameter"
+                    "error": "diagram_id is required as a query parameter"
                 }),
+                status_code=400,
+                mimetype="application/json",
+                headers={
+                    "Access-Control-Allow-Origin": "https://stfrdywpuiprdcac.z9.web.core.windows.net",
+                    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+                    "Access-Control-Allow-Credentials": "true"
+                }
+            )
+        
+        # Convert diagram_id to integer
+        try:
+            diagram_id = int(diagram_id)
+        except ValueError:
+            return func.HttpResponse(
+                json.dumps({"error": "diagram_id must be a valid integer"}),
                 status_code=400,
                 mimetype="application/json",
                 headers={

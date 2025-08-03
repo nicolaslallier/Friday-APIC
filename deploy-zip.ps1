@@ -27,7 +27,6 @@ $filesToZip = @(
     "diagram_read",
     "diagram_update",
     "diagram_delete",
-    "db_test",
     "shared",
     "test_simple",
     "host.json",
@@ -85,11 +84,12 @@ try {
         Write-Host "  • Read Diagrams: https://$FunctionAppName-ffgrbhfrfxatbqgy.canadacentral-01.azurewebsites.net/api/diagram/read" -ForegroundColor White
         Write-Host "  • Update Diagram: https://$FunctionAppName-ffgrbhfrfxatbqgy.canadacentral-01.azurewebsites.net/api/diagram/update" -ForegroundColor White
         Write-Host "  • Delete Diagram: https://$FunctionAppName-ffgrbhfrfxatbqgy.canadacentral-01.azurewebsites.net/api/diagram/delete" -ForegroundColor White
-        Write-Host "  • Database Test: https://$FunctionAppName-ffgrbhfrfxatbqgy.canadacentral-01.azurewebsites.net/api/db-test" -ForegroundColor White
         Write-Host "  • Test Simple: https://$FunctionAppName-ffgrbhfrfxatbqgy.canadacentral-01.azurewebsites.net/api/test-simple" -ForegroundColor White
         Write-Host ""
         Write-Host "🔧 Database: PostgreSQL connected to pg-frdypgdb-prd-cac.postgres.database.azure.com" -ForegroundColor Cyan
         Write-Host "📝 Note: Make sure to set the POSTGRES_PASSWORD environment variable in Azure Functions" -ForegroundColor Yellow
+        Write-Host ""
+
     } else {
         Write-Host "❌ Deployment failed!" -ForegroundColor Red
         Write-Host "Error: $deployResult" -ForegroundColor Red

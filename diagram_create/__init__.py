@@ -15,9 +15,32 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     
     Expected JSON body:
     {
+        "package_id": 1,
+        "parentid": 0,
+        "diagram_type": "Class",
         "name": "Diagram Name",
-        "description": "Diagram Description",
-        "content": "Diagram content/data"
+        "version": "1.0",
+        "author": "Author Name",
+        "showdetails": 0,
+        "notes": "Diagram notes",
+        "stereotype": "stereotype",
+        "attpub": 1,
+        "attpri": 1,
+        "attpro": 1,
+        "orientation": "P",
+        "cx": 0,
+        "cy": 0,
+        "scale": 100,
+        "htmlpath": "/path/to/html",
+        "showforeign": 1,
+        "showborder": 1,
+        "showpackagecontents": 1,
+        "pdata": "pdata",
+        "locked": 0,
+        "ea_guid": "guid",
+        "tpos": 0,
+        "swimlanes": "swimlanes",
+        "styleex": "styleex"
     }
     """
     print("🚀 [DIAGRAM CREATE] Function started")
@@ -80,14 +103,14 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         print("➕ [DIAGRAM CREATE] Creating diagram...")
         db_manager = DiagramDBManager()
         new_diagram = db_manager.create_diagram(req_body)
-        print(f"✅ [DIAGRAM CREATE] Diagram created with ID: {new_diagram['id']}")
+        print(f"✅ [DIAGRAM CREATE] Diagram created with ID: {new_diagram['diagram_id']}")
         
         # Return success response
         response_data = {
             "status": "success",
             "message": "Diagram created successfully",
             "diagram": new_diagram,
-            "timestamp": new_diagram['created_at']
+            "timestamp": new_diagram['createddate']
         }
         
         print(f"📤 [DIAGRAM CREATE] Returning success response: {json.dumps(response_data, indent=2)}")

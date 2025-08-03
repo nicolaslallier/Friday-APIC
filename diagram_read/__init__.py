@@ -14,7 +14,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     Read diagrams from the PostgreSQL database.
     
     Query parameters:
-    - id: Get specific diagram by ID
+    - diagram_id: Get specific diagram by ID
+    - package_id: Filter by package ID
+    - diagram_type: Filter by diagram type
     """
     print("🚀 [DIAGRAM READ] Function started")
     logging.info('Diagram read function processed a request.')
@@ -33,15 +35,49 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     
     try:
         # Get query parameters
-        diagram_id = req.params.get('id')
+        diagram_id = req.params.get('diagram_id')
+        package_id = req.params.get('package_id')
+        diagram_type = req.params.get('diagram_type')
         
-        print(f"🔍 [DIAGRAM READ] Query parameters - ID: {diagram_id}")
+        print(f"🔍 [DIAGRAM READ] Query parameters - diagram_id: {diagram_id}, package_id: {package_id}, diagram_type: {diagram_type}")
+        
+        # Convert package_id to integer if provided
+        if package_id:
+            try:
+                package_id = int(package_id)
+            except ValueError:
+                return func.HttpResponse(
+                    json.dumps({"error": "package_id must be a valid integer"}),
+                    status_code=400,
+                    mimetype="application/json",
+                    headers={
+                        "Access-Control-Allow-Origin": "https://stfrdywpuiprdcac.z9.web.core.windows.net",
+                        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+                        "Access-Control-Allow-Credentials": "true"
+                    }
+                )
         
         db_manager = DiagramDBManager()
         
-        # If specific ID is requested
+        # If specific diagram ID is requested
         if diagram_id:
             print(f"🎯 [DIAGRAM READ] Looking for specific diagram with ID: {diagram_id}")
+            try:
+                diagram_id = int(diagram_id)
+            except ValueError:
+                return func.HttpResponse(
+                    json.dumps({"error": "diagram_id must be a valid integer"}),
+                    status_code=400,
+                    mimetype="application/json",
+                    headers={
+                        "Access-Control-Allow-Origin": "https://stfrdywpuiprdcac.z9.web.core.windows.net",
+                        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                        "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+                        "Access-Control-Allow-Credentials": "true"
+                    }
+                )
+            
             diagram = db_manager.read_diagrams(diagram_id=diagram_id)
             if not diagram:
                 print(f"❌ [DIAGRAM READ] Diagram with ID '{diagram_id}' not found")
@@ -80,9 +116,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
                 }
             )
         
-        # Get all diagrams
-        print("📋 [DIAGRAM READ] Reading all diagrams...")
-        diagrams = db_manager.read_diagrams()
+        # Get diagrams with optional filters
+        print("📋 [DIAGRAM READ] Reading diagrams with filters...")
+        diagrams = db_manager.read_diagrams(package_id=package_id, diagram_type=diagram_type)
         print(f"📊 [DIAGRAM READ] Found {len(diagrams)} total diagrams")
         
         response_data = {
