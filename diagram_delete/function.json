@@ -7,10 +7,10 @@
       "direction": "in",
       "name": "req",
       "methods": [
-        "get",
-        "post"
+        "delete",
+        "options"
       ],
-      "route": "hello"
+      "route": "diagram/delete"
     },
     {
       "type": "http",

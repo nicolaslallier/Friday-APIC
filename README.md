@@ -10,18 +10,16 @@ A Python-based Azure Function App with multiple functions. Each function is orga
 - **Description**: Returns the health status of the function app
 - **Response**: JSON with status, timestamp, service info, and health checks
 
-### 2. Hello World (`/hello`)
-- **Route**: `/hello`
-- **Method**: GET, POST
-- **Description**: Returns a greeting message
-- **Response**: JSON with greeting message and timestamp
-- **POST Body**: Optional JSON with `{"name": "YourName"}` for personalized greeting
+
+
+
 
 ## Prerequisites
 
 - Python 3.8 or higher
 - Azure Functions Core Tools
 - Azure CLI (for deployment)
+
 
 ## Local Development Setup
 
@@ -142,38 +140,9 @@ Expected response:
 }
 ```
 
-### Hello World (GET)
-```bash
-curl http://localhost:7071/hello
-```
 
-Expected response:
-```json
-{
-  "message": "Hello, World!",
-  "timestamp": "2024-01-01T12:00:00.000000Z",
-  "method": "GET",
-  "status": "success"
-}
-```
 
-### Hello World (POST with name)
-```bash
-curl -X POST http://localhost:7071/hello \
-  -H "Content-Type: application/json" \
-  -d '{"name": "John"}'
-```
 
-Expected response:
-```json
-{
-  "message": "Hello, John!",
-  "timestamp": "2024-01-01T12:00:00.000000Z",
-  "method": "POST",
-  "status": "success",
-  "received_name": "John"
-}
-```
 
 ## Deployment to Azure
 
@@ -209,7 +178,10 @@ Friday-APIC/
 ├── health_check/           # Health check function
 │   ├── function.json      # Function configuration
 │   └── __init__.py        # Function implementation
-├── hello_world/           # Hello world function
+├── shared/                 # Shared utilities
+│   ├── __init__.py        # Package marker
+│   └── file_utils.py      # File utilities
+├── test_simple/           # Simple test function
 │   ├── function.json      # Function configuration
 │   └── __init__.py        # Function implementation
 ├── tests/                 # Test suite
@@ -222,6 +194,7 @@ Friday-APIC/
 ├── local.settings.json   # Local development settings
 ├── pytest.ini           # Pytest configuration
 ├── run_tests.py         # Test runner script
+├── deploy-zip.ps1       # PowerShell deployment script
 ├── .gitignore           # Git ignore file
 └── README.md            # This file
 ```
@@ -279,6 +252,7 @@ The following environment variables can be configured:
 
 - `WEBSITE_SITE_NAME`: The name of your function app (defaults to "Friday-APIC")
 - `AZURE_FUNCTIONS_ENVIRONMENT`: The environment (Development, Production, etc.)
+
 
 ## Contributing
 

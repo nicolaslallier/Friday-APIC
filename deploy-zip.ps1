@@ -1,109 +1,107 @@
-# Azure Functions Zip Deployment Script
-# This script creates a zip file and deploys it to Azure Functions
-
+# PowerShell script to create a zip file and deploy to Azure Functions
 param(
     [string]$FunctionAppName = "func-frdyapic-prd-cac",
-    [string]$ResourceGroup = "rg-Friday-prd-cac",
-    [string]$ZipFileName = "friday-apic-deployment.zip"
+    [string]$ResourceGroup = "rg-Friday-prd-cac"
 )
 
-Write-Host "🚀 Starting Azure Functions Zip Deployment..." -ForegroundColor Green
-Write-Host "Function App: $FunctionAppName" -ForegroundColor Yellow
-Write-Host "Resource Group: $ResourceGroup" -ForegroundColor Yellow
-Write-Host "Zip File: $ZipFileName" -ForegroundColor Yellow
+Write-Host "🚀 Starting deployment process..." -ForegroundColor Green
 
-# Check if Azure CLI is installed
-try {
-    $azVersion = az --version 2>$null
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "✅ Azure CLI is installed" -ForegroundColor Green
-    } else {
-        Write-Host "❌ Azure CLI not found. Please install it first:" -ForegroundColor Red
-        Write-Host "   winget install Microsoft.AzureCLI" -ForegroundColor Yellow
-        exit 1
-    }
-} catch {
-    Write-Host "❌ Azure CLI not found. Please install it first:" -ForegroundColor Red
-    Write-Host "   winget install Microsoft.AzureCLI" -ForegroundColor Yellow
-    exit 1
+# List available resource groups and function apps for verification
+Write-Host "📋 Available Resource Groups:" -ForegroundColor Yellow
+az group list --query "[].name" -o table
+
+Write-Host "📋 Available Function Apps:" -ForegroundColor Yellow
+az functionapp list --resource-group $ResourceGroup --query "[].name" -o table
+
+# Create a clean deployment directory
+$deployDir = "deployment-temp"
+if (Test-Path $deployDir) {
+    Remove-Item $deployDir -Recurse -Force
 }
+New-Item -ItemType Directory -Path $deployDir | Out-Null
 
-# Login to Azure
-Write-Host "🔐 Logging into Azure..." -ForegroundColor Yellow
-az login
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Failed to login to Azure" -ForegroundColor Red
-    exit 1
-}
-
-# List available resources
-Write-Host "📋 Checking available resources..." -ForegroundColor Yellow
-Write-Host "Resource Groups:" -ForegroundColor Cyan
-az group list --output table
-
-Write-Host "Function Apps:" -ForegroundColor Cyan
-az functionapp list --output table
-
-# Create deployment zip file
-Write-Host "📦 Creating deployment zip file..." -ForegroundColor Yellow
-
-# Remove existing zip file if it exists
-if (Test-Path $ZipFileName) {
-    Remove-Item $ZipFileName -Force
-    Write-Host "   Removed existing zip file" -ForegroundColor Gray
-}
-
-# Create zip file with required files
+# Define files and folders to include in the zip
 $filesToZip = @(
     "health_check",
-    "hello_world", 
+    "diagram_create",
+    "diagram_read",
+    "diagram_update",
+    "diagram_delete",
+    "db_test",
+    "shared",
+    "test_simple",
     "host.json",
-    "local.settings.json",
     "requirements.txt"
 )
 
-Write-Host "   Adding files to zip:" -ForegroundColor Gray
-foreach ($file in $filesToZip) {
-    if (Test-Path $file) {
-        Write-Host "     ✅ $file" -ForegroundColor Gray
+Write-Host "📦 Creating deployment package..." -ForegroundColor Yellow
+
+# Copy files to deployment directory
+foreach ($item in $filesToZip) {
+    if (Test-Path $item) {
+        if (Test-Path $item -PathType Container) {
+            # Copy directory
+            Copy-Item -Path $item -Destination $deployDir -Recurse -Force
+            Write-Host "  ✅ Copied directory: $item" -ForegroundColor Green
+        } else {
+            # Copy file
+            Copy-Item -Path $item -Destination $deployDir -Force
+            Write-Host "  ✅ Copied file: $item" -ForegroundColor Green
+        }
     } else {
-        Write-Host "     ❌ $file (not found)" -ForegroundColor Red
+        Write-Host "  ⚠️  Warning: $item not found" -ForegroundColor Yellow
     }
 }
 
-# Create the zip file
+# Create zip file
+$zipFileName = "friday-apic-deployment.zip"
+if (Test-Path $zipFileName) {
+    Remove-Item $zipFileName -Force
+}
+
+Write-Host "🗜️  Creating zip file: $zipFileName" -ForegroundColor Yellow
+Compress-Archive -Path "$deployDir\*" -DestinationPath $zipFileName -Force
+
+# Verify zip contents
+Write-Host "📋 Zip file contents:" -ForegroundColor Yellow
+Expand-Archive -Path $zipFileName -DestinationPath "zip-contents-temp" -Force
+Get-ChildItem -Path "zip-contents-temp" -Recurse | ForEach-Object { Write-Host "  📄 $($_.FullName.Replace('zip-contents-temp\', ''))" }
+Remove-Item "zip-contents-temp" -Recurse -Force
+
+# Deploy to Azure Functions
+Write-Host "🚀 Deploying to Azure Functions..." -ForegroundColor Green
+Write-Host "  📍 Function App: $FunctionAppName" -ForegroundColor Cyan
+Write-Host "  📍 Resource Group: $ResourceGroup" -ForegroundColor Cyan
+
 try {
-    Compress-Archive -Path $filesToZip -DestinationPath $ZipFileName -Force
-    Write-Host "✅ Zip file created successfully: $ZipFileName" -ForegroundColor Green
-} catch {
-    Write-Host "❌ Failed to create zip file: $($_.Exception.Message)" -ForegroundColor Red
-    exit 1
-}
-
-# Deploy using Azure CLI
-Write-Host "📤 Deploying to Azure Functions..." -ForegroundColor Yellow
-az functionapp deployment source config-zip --resource-group $ResourceGroup --name $FunctionAppName --src $ZipFileName --build-remote true
-
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "✅ Deployment successful!" -ForegroundColor Green
-    Write-Host "🌐 Your function app is available at:" -ForegroundColor Cyan
-    Write-Host "   https://$FunctionAppName.azurewebsites.net" -ForegroundColor White
+    $deployResult = az functionapp deployment source config-zip --resource-group $ResourceGroup --name $FunctionAppName --src $zipFileName
     
-    Write-Host "📋 Available endpoints:" -ForegroundColor Cyan
-    Write-Host "   Health Check: https://$FunctionAppName.azurewebsites.net/health" -ForegroundColor White
-    Write-Host "   Hello World: https://$FunctionAppName.azurewebsites.net/hello" -ForegroundColor White
-    
-    # Clean up zip file
-    if (Test-Path $ZipFileName) {
-        Remove-Item $ZipFileName -Force
-        Write-Host "🧹 Cleaned up temporary zip file" -ForegroundColor Gray
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "✅ Deployment successful!" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "🌐 Available endpoints:" -ForegroundColor Cyan
+        Write-Host "  • Health Check: https://$FunctionAppName-ffgrbhfrfxatbqgy.canadacentral-01.azurewebsites.net/api/health" -ForegroundColor White
+        Write-Host "  • Create Diagram: https://$FunctionAppName-ffgrbhfrfxatbqgy.canadacentral-01.azurewebsites.net/api/diagram/create" -ForegroundColor White
+        Write-Host "  • Read Diagrams: https://$FunctionAppName-ffgrbhfrfxatbqgy.canadacentral-01.azurewebsites.net/api/diagram/read" -ForegroundColor White
+        Write-Host "  • Update Diagram: https://$FunctionAppName-ffgrbhfrfxatbqgy.canadacentral-01.azurewebsites.net/api/diagram/update" -ForegroundColor White
+        Write-Host "  • Delete Diagram: https://$FunctionAppName-ffgrbhfrfxatbqgy.canadacentral-01.azurewebsites.net/api/diagram/delete" -ForegroundColor White
+        Write-Host "  • Database Test: https://$FunctionAppName-ffgrbhfrfxatbqgy.canadacentral-01.azurewebsites.net/api/db-test" -ForegroundColor White
+        Write-Host "  • Test Simple: https://$FunctionAppName-ffgrbhfrfxatbqgy.canadacentral-01.azurewebsites.net/api/test-simple" -ForegroundColor White
+        Write-Host ""
+        Write-Host "🔧 Database: PostgreSQL connected to pg-frdypgdb-prd-cac.postgres.database.azure.com" -ForegroundColor Cyan
+        Write-Host "📝 Note: Make sure to set the POSTGRES_PASSWORD environment variable in Azure Functions" -ForegroundColor Yellow
+    } else {
+        Write-Host "❌ Deployment failed!" -ForegroundColor Red
+        Write-Host "Error: $deployResult" -ForegroundColor Red
     }
-} else {
-    Write-Host "❌ Deployment failed!" -ForegroundColor Red
-    Write-Host "   Please check the error messages above" -ForegroundColor Yellow
-    Write-Host "   Zip file preserved for debugging: $ZipFileName" -ForegroundColor Yellow
-    exit 1
+} catch {
+    Write-Host "❌ Deployment failed with exception: $($_.Exception.Message)" -ForegroundColor Red
 }
 
-Write-Host "🎉 Zip deployment completed successfully!" -ForegroundColor Green 
+# Cleanup
+Write-Host "🧹 Cleaning up temporary files..." -ForegroundColor Yellow
+if (Test-Path $deployDir) {
+    Remove-Item $deployDir -Recurse -Force
+}
+
+Write-Host "🏁 Deployment process completed!" -ForegroundColor Green 
