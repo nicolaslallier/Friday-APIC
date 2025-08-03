@@ -1,4 +1,8 @@
-import psycopg
+try:
+    import psycopg
+    print("✅ psycopg is installed")
+except ImportError:
+    print("❌ psycopg is NOT installed")
 import json
 from datetime import datetime
 import os

@@ -73,8 +73,7 @@ Write-Host "  📍 Function App: $FunctionAppName" -ForegroundColor Cyan
 Write-Host "  📍 Resource Group: $ResourceGroup" -ForegroundColor Cyan
 
 try {
-    $deployResult = az functionapp deployment source config-zip --resource-group $ResourceGroup --name $FunctionAppName --src $zipFileName
-    
+    $deployResult = az functionapp deployment source config-zip --resource-group $ResourceGroup --name $FunctionAppName --src $zipFileName 
     if ($LASTEXITCODE -eq 0) {
         Write-Host "✅ Deployment successful!" -ForegroundColor Green
         Write-Host ""
