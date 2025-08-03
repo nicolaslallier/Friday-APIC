@@ -6,6 +6,9 @@ except ImportError:
 import json
 from datetime import datetime
 import os
+import sys
+
+sys.path.append(os.path.join(os.path.dirname(__file__), ".python_packages/lib/site-packages"))
 
 class DiagramDBManager:
     def __init__(self):

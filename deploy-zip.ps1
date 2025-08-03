@@ -30,7 +30,8 @@ $filesToZip = @(
     "shared",
     "test_simple",
     "host.json",
-    "requirements.txt"
+    "requirements.txt",
+    ".python_packages/lib/site-packages"
 )
 
 Write-Host "📦 Creating deployment package..." -ForegroundColor Yellow

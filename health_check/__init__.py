@@ -1,10 +1,18 @@
-import azure.functions as func
-import logging
-import json
-import os
-import psutil
-import sys
 from datetime import datetime
+import json
+import logging
+import os
+import sys
+
+import azure.functions as func
+import psutil
+
+import shared.db_utils
+try:
+    import psycopg
+    print("✅ psycopg is installed")
+except ImportError:
+    print("❌ psycopg is NOT installed")
 
 # Add the shared directory to the path
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'shared'))
@@ -47,10 +55,9 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         
         try:
             print("🔍 [HEALTH CHECK] Testing database connectivity...")
-            from db_utils import DiagramDBManager
             
             # Test database connection
-            db_manager = DiagramDBManager()
+            db_manager = shared.db_utils.DiagramDBManager()
             conn = db_manager._get_connection()
             db_check["connection"] = True
             db_check["status"] = "connected"
